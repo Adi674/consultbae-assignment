@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConsultBae Audio Portal</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="glass-container">
+        <header>
+            <h1>ConsultBae <span>Audio Submission</span></h1>
+            <nav>
+                <a href="{{ url_for('index') }}" class="active">Submit</a>
+                <a href="{{ url_for('submissions') }}">View Database</a>
+            </nav>
+        </header>
+
+        <main>
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                <div class="alerts">
+                {% for message in messages %}
+                  <div class="alert">{{ message }}</div>
+                {% endfor %}
+                </div>
+              {% endif %}
+            {% endwith %}
+
+            <form action="{{ url_for('index') }}" method="POST" enctype="multipart/form-data" id="audioForm">
+                <div class="input-group">
+                    <label for="name">Full Name</label>
+                    <input type="text" id="name" name="name" required placeholder="Enter your full name">
+                </div>
+                
+                <div class="input-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="text" id="phone" name="phone" required placeholder="e.g. 9000000123">
+                </div>
+                
+                <div class="audio-controls">
+                    <h3>Record or Upload Audio</h3>
+                    
+                    <div class="tabs">
+                        <button type="button" class="tab-btn active" onclick="switchTab('record')">Record</button>
+                        <button type="button" class="tab-btn" onclick="switchTab('upload')">Upload</button>
+                    </div>
+                    
+                    <div id="recordTab" class="tab-content active">
+                        <div class="recorder-ui">
+                            <button type="button" id="recordBtn" class="record-btn">
+                                <span class="icon-mic"></span> Start Recording
+                            </button>
+                            <span id="recordingStatus" class="status-indicator">Ready</span>
+                        </div>
+                        <audio id="audioPlayback" controls style="display:none;"></audio>
+                        <!-- Hidden input to store blob -->
+                        <input type="file" id="recordedAudioFile" name="audio" style="display:none;">
+                    </div>
+                    
+                    <div id="uploadTab" class="tab-content" style="display:none;">
+                        <input type="file" id="uploadAudioFile" name="audio_upload" accept="audio/*">
+                    </div>
+                </div>
+
+                <button type="submit" class="submit-btn" id="submitBtn">Submit Recording</button>
+            </form>
+        </main>
+    </div>
+
+    <script>
+        // Tab switching logic
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+            
+            if (tab === 'record') {
+                document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
+                document.getElementById('recordTab').style.display = 'block';
+                document.getElementById('uploadAudioFile').name = "audio_upload";
+                document.getElementById('recordedAudioFile').name = "audio";
+            } else {
+                document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
+                document.getElementById('uploadTab').style.display = 'block';
+                document.getElementById('uploadAudioFile').name = "audio";
+                document.getElementById('recordedAudioFile').name = "audio_recorded";
+            }
+        }
+
+        // MediaRecorder API logic
+        let mediaRecorder;
+        let audioChunks = [];
+        const recordBtn = document.getElementById('recordBtn');
+        const status = document.getElementById('recordingStatus');
+        const playback = document.getElementById('audioPlayback');
+        const fileInput = document.getElementById('recordedAudioFile');
+
+        recordBtn.addEventListener('click', async () => {
+            if (recordBtn.classList.contains('recording')) {
+                // Stop recording
+                mediaRecorder.stop();
+                recordBtn.classList.remove('recording');
+                recordBtn.innerHTML = '<span class="icon-mic"></span> Start Recording';
+                status.innerText = "Recording saved.";
+                status.classList.remove('pulsing');
+            } else {
+                // Start recording
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+                    
+                    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                    
+                    mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        const audioUrl = URL.createObjectURL(audioBlob);
+                        playback.src = audioUrl;
+                        playback.style.display = 'block';
+                        
+                        // Create a file object and put it in the hidden input
+                        const file = new File([audioBlob], "recording.webm", { type: 'audio/webm' });
+                        const dataTransfer = new DataTransfer();
+                        dataTransfer.items.add(file);
+                        fileInput.files = dataTransfer.files;
+                    };
+                    
+                    mediaRecorder.start();
+                    recordBtn.classList.add('recording');
+                    recordBtn.innerHTML = '<span class="icon-stop"></span> Stop Recording';
+                    status.innerText = "Recording...";
+                    status.classList.add('pulsing');
+                    playback.style.display = 'none';
+                    
+                } catch (err) {
+                    alert("Microphone access denied or not available.");
+                }
+            }
+        });
+    </script>
+</body>
+</html>

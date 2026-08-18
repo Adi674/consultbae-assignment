@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConsultBae Submissions</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body class="submissions-page">
+    <div class="glass-container wide">
+        <header>
+            <h1>Audio <span>Submissions</span></h1>
+            <nav>
+                <a href="{{ url_for('index') }}">Submit</a>
+                <a href="{{ url_for('submissions') }}" class="active">View Database</a>
+            </nav>
+        </header>
+
+        <main>
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                <div class="alerts">
+                {% for message in messages %}
+                  <div class="alert">{{ message }}</div>
+                {% endfor %}
+                </div>
+              {% endif %}
+            {% endwith %}
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Applicant</th>
+                            <th>Phone</th>
+                            <th>Audio</th>
+                            <th>Duration (s)</th>
+                            <th>Sample Rate (kHz)</th>
+                            <th>Bitrate (kbps)</th>
+                            <th>Loudness (dB)</th>
+                            <th>Quality Estimate</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sub in submissions %}
+                        <tr>
+                            <td><strong>{{ sub.name }}</strong></td>
+                            <td>{{ sub.phone }}</td>
+                            <td>
+                                <audio controls>
+                                    <source src="{{ url_for('static', filename=sub.file_path) }}" type="audio/webm">
+                                    <source src="{{ url_for('static', filename=sub.file_path) }}" type="audio/mp3">
+                                    <source src="{{ url_for('static', filename=sub.file_path) }}" type="audio/wav">
+                                    Your browser does not support the audio element.
+                                </audio>
+                            </td>
+                            <td>{{ sub.duration }}</td>
+                            <td>{{ sub.sample_rate }}</td>
+                            <td>{{ sub.bitrate }}</td>
+                            <td>
+                                <span class="badge {% if sub.loudness < -45 or sub.loudness > -5 %}badge-danger{% else %}badge-success{% endif %}">
+                                    {{ sub.loudness }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge {% if 'Poor' in sub.noise_quality_estimate %}badge-danger{% else %}badge-success{% endif %}">
+                                    {{ sub.noise_quality_estimate }}
+                                </span>
+                            </td>
+                            <td>{{ sub.submitted_at[:16] }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="9" class="empty-state">No audio submissions found in the database.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
