@@ -1,0 +1,4 @@
+rapidfuzz==3.6.1
+Flask==3.0.2
+pydub==0.25.1
+Werkzeug==3.0.1
