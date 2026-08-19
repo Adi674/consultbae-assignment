@@ -1,0 +1,133 @@
+{
+  "name": "ConsultBae Duplicate Alert Flow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "csv-ingest",
+        "options": {}
+      },
+      "id": "e0d37e23-7fa3-4cf0-85f2-95f00e9bc5a1",
+      "name": "Webhook (Receive CSV Data)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        200,
+        300
+      ],
+      "webhookId": "csv-upload-trigger"
+    },
+    {
+      "parameters": {
+        "url": "=http://127.0.0.1:5000/api/check_duplicate?email={{$json[\"body\"][\"email\"]}}",
+        "sendHeaders": true,
+        "options": {}
+      },
+      "id": "3b6807ba-cb4a-43dc-8869-ec8e9f2988cb",
+      "name": "Flask App (Check DB)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json[\"duplicate\"]}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "e45ef133-c598-46fb-9a2c-f60bb1645e75",
+      "name": "Is Duplicate?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        640,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://webhook.site/mock-slack-alert",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "=\u26a0\ufe0f Duplicate Applicant Found! Email: {{$node[\"Webhook (Receive CSV Data)\"].json[\"body\"][\"email\"]}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a4d33eb9-1dcb-491c-b26a-1bbdafb3fc8f",
+      "name": "Send Mock Slack Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        860,
+        180
+      ]
+    }
+  ],
+  "pinData": {
+    "Webhook (Receive CSV Data)": [
+      {
+        "json": {
+          "body": {
+            "name": "Varun Jain",
+            "email": "varun.jain29@example.com",
+            "phone": "9000000263"
+          }
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook (Receive CSV Data)": {
+      "main": [
+        [
+          {
+            "node": "Flask App (Check DB)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flask App (Check DB)": {
+      "main": [
+        [
+          {
+            "node": "Is Duplicate?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Duplicate?": {
+      "main": [
+        [
+          {
+            "node": "Send Mock Slack Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b1b0142b-e4a4-4df1-afb5-77983637e696"
+}

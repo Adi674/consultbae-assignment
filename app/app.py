@@ -1,7 +1,7 @@
 import os
 import sqlite3
 import random
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from werkzeug.utils import secure_filename
 from datetime import datetime
 from pydub import AudioSegment
@@ -114,6 +114,19 @@ def submissions():
     subs = conn.execute("SELECT * FROM audio_submissions ORDER BY submitted_at DESC").fetchall()
     conn.close()
     return render_template('submissions.html', submissions=subs)
+
+@app.route('/api/check_duplicate', methods=['GET'])
+def check_duplicate():
+    email = request.args.get('email')
+    phone = request.args.get('phone')
+    conn = get_db_connection()
+    person = None
+    if email:
+        person = conn.execute("SELECT * FROM persons WHERE email = ?", (email,)).fetchone()
+    elif phone:
+        person = conn.execute("SELECT * FROM persons WHERE phone = ?", (phone,)).fetchone()
+    conn.close()
+    return jsonify({"duplicate": bool(person), "person": dict(person) if person else None})
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
