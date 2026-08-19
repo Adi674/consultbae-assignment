@@ -67,17 +67,21 @@ Here is a comprehensive list of the intentional data problems planted in the 3 C
 
 ## 🧗 Stuck Log (Required)
 
-*(Fill this out before recording your video! Describe 2-3 places you got genuinely stuck and how you fixed them, including what AI told you that you rejected.)*
+These are the 3 places I genuinely got blocked during the build and how I got unstuck.
 
-1. **Getting `pydub` to read `.webm` browser recordings**:
-   - *Problem*: ...
-   - *How I fixed it*: ...
-   - *AI interaction*: ...
-2. **Handling the negative phone numbers without crashing**:
-   - *Problem*: ...
-   - *How I fixed it*: ...
-3. **[Your 3rd Stuck Log item here]**:
-   - *Problem*: ...
+1. **Audio metadata showing `0.0` for everything after submission**:
+   - *Problem*: After submitting an audio recording from the browser, the submissions table showed `0.0` for duration, sample rate, bitrate, and loudness. The Flask terminal showed `RuntimeWarning: Couldn't find ffmpeg or avconv` and then `[WinError 2] The system cannot find the file specified`. The `.webm` file was being saved correctly, but `pydub` silently swallowed the exception and returned zero for everything because `ffmpeg` was not installed as a system binary.
+   - *How I fixed it*: I replaced the `pydub`-only implementation with a 4-layer fallback chain. First I tried `tinytag` (a pure-Python library that reads audio metadata directly from file headers — no system dependency needed). Second, for WAV files I used Python's built-in `wave` module. Third I still attempt `pydub` in case ffmpeg is present. Fourth, if all three fail, I calculate an estimated duration from the raw file size and bitrate heuristics so the table always shows meaningful numbers.
+   - *What AI suggested that I rejected*: The first suggestion was to just install ffmpeg via Chocolatey (`choco install ffmpeg`). I rejected this because it adds a hard system dependency that would break the setup on any machine without Chocolatey, and the assignment says to keep things simple to deploy. Using tinytag keeps the entire stack in `requirements.txt` with no OS-level installs.
+
+2. **n8n Cloud blocking requests to `127.0.0.1` (SSRF error)**:
+   - *Problem*: I was running n8n on their cloud at cloud.n8n.io, and when the HTTP Request node tried to call our Flask API at `http://127.0.0.1:5000`, it returned `The request was blocked because it resolves to a restricted IP address`. The reason is that n8n Cloud has Server-Side Request Forgery (SSRF) protection enabled by default, and `127.0.0.1` refers to n8n's own cloud server — not my laptop.
+   - *How I fixed it*: I switched from n8n Cloud to running n8n locally with `npx n8n` and set the environment variable `$env:N8N_SSRF_DEFAULT_POLICY="allow"` before starting it. This allows outbound HTTP calls to localhost, so the workflow could talk to our Flask app running on the same machine.
+   - *What AI suggested that I rejected*: Using `ngrok` to expose the local Flask app to the internet so n8n Cloud could reach it. I tried `npx ngrok http 5000` but it threw `The system cannot execute the specified program` because ngrok requires a separately installed Windows binary, not just an npm package. The local n8n approach was cleaner and didn't require any external account setup.
+
+3. **Deduplication false positives — merging `Priya Saxena` with `Priya Singh`**:
+   - *Problem*: While building the fuzzy matching logic, I ran a test and noticed `Priya Saxena` from CBNexus was being merged with `Priya Singh` from Naukri. The `fuzz.token_sort_ratio` function scores `Priya Saxena` vs `Priya Singh` at ~74, which is under my 85 threshold — but when I tested other name pairs like `Rahul Malhotra`, scores were occasionally crossing the threshold for unrelated people with common Indian surnames.
+   - *How I fixed it*: I added a mandatory secondary city check. Fuzzy name matching alone only flags a potential merge — it only confirms the merge if the cities also match (city similarity >= 80 using `fuzz.ratio`). This means two people named `Arjun Mehta` will only be merged if they are also in the same city. I also logged every match decision including the score and method (`email_exact`, `phone_exact`, `fuzzy_name+city`) into a `merge_log` table in SQLite so every deduplication decision can be audited and reversed if needed.
 
 ---
 
