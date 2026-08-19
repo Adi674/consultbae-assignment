@@ -55,7 +55,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://webhook.site/mock-slack-alert",
+        "url": "https://httpbin.org/post",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
